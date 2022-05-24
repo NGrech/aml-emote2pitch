@@ -51,3 +51,8 @@ For CPU only support on Linux:
 ```bash
 poe linus_pytorch_cpu
 ```
+
+# Data Setup
+
+TODO: add how to get the data
+
