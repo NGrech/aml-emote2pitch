@@ -17,9 +17,12 @@ sklearn = "^0.0"
 scikit-image = "^0.19.2"
 torchsummary = "^1.5.1"
 kaggle = "^1.5.12"
+librosa = "^0.9.1"
+ipykernel = "^6.13.0"
 
 [tool.poetry.dev-dependencies]
 poethepoet = "^0.13.1"
+ipykernel = "^6.13.0"
 
 [tool.poe.tasks]
 pytorch_cpu = "poetry run pip3 install torch torchvision torchaudio torchtext torchdata"
