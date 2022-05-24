@@ -52,7 +52,10 @@ For CPU only support on Linux:
 poe linus_pytorch_cpu
 ```
 
-# Data Setup
+## Data Setup
 
-TODO: add how to get the data
-
+To use this repo you will need the [FER](https://www.kaggle.com/datasets/msambare/fer2013) dataset and the [GTZAN](https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification) dataset.
+Follow these steps to get setup the data folder:
+1. Download FER and GTZAN
+2. Extract FER to data\FER
+3. Extract genres_original form the GTZAN archive to  data\GTZAN
