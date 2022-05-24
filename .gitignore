@@ -130,4 +130,6 @@ dmypy.json
 
 TESTNB.ipynb
 
-data/
+data/FER/*
+data/GTZAN/*
+.vscode/settings.json
