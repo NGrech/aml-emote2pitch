@@ -124,3 +124,14 @@ class Discriminator(nn.Module):
         #concatonates images and condition image by channels to produce input
         img_input=torch.cat((img_a, img_b), 1)
         return self.model(img_input)
+
+
+######################################################################
+#   Emote2Pitch and initializing generator and discriminator
+######################################################################
+
+class Emote2Pitch(nn.Module):
+    def __init__(self):
+        super(Emote2Pitch, self).__init__()
+        self.G =Generator()
+        self.D =Discriminator()
