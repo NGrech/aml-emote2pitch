@@ -50,38 +50,47 @@ class EmotePairingDataset(Dataset):
         spgs_paths (list):  List of paths for corresponding paired spectrogram images   
     """
 
-    # def __init__(self, paring_pth, set: str='train', transform=None) -> None:
-    def __init__(self, emos_paths, spgs_paths, transform=None, target_transform=None) -> None:
+    def __init__(self, paring_pth, set: str='train', transform=None, target_transform=None) -> None:
+    # def __init__(self, emos_paths, spgs_paths, transform=None, target_transform=None) -> None:
 
         super().__init__()
 
-        self.emos_paths = emos_paths
-        self.sptg_paths = spgs_paths
         self.transform = transform
         self.target_transform = target_transform
+
+        self.paring_pth = paring_pth
+        self.csv_path = os.path.join(paring_pth, 'data', 'parings_2.csv')
+
+        with open(self.csv_path, 'r', newline='') as fr:
+            csv_data = csv.reader(fr)
+            self.csv_data_len = len(list(csv_data))
 
     def __getitem__(self, index):
 
         xs = []
         ys = []
 
-        for emo_path, sptg_path in zip(self.emos_paths, self.sptg_paths):
-            
-            x = Image.open(emo_path)
-            y = Image.open(sptg_path)
-            
-            if self.transform:
-                x = self.transform(x)
-            if self.target_transform:
-                y = self.target_transform(y)
-            
-            xs.append(x)
-            ys.append(y)
+        with open(self.csv_path, 'r', newline='') as fr:
 
-        return xs, ys
+            csv_data = csv.reader(fr)
+
+            for emo_p, sptg_p, train_test in csv_data:
+
+                x = Image.open(os.path.join(self.paring_pth, emo_p))
+                y = Image.open(os.path.join(self.paring_pth, sptg_p))
+
+                if self.transform:
+                    x = self.transform(x)
+                if self.target_transform:
+                    y = self.target_transform(y)
+
+                xs.append(x)
+                ys.append(y)
+
+            return xs, ys
 
     def __len__(self):
-        return len(self.emos_paths)
+        return self.csv_data_len
 
 if __name__=='__main__':
 
