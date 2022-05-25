@@ -2,6 +2,8 @@ import csv
 import os
 
 from torch.utils.data import Dataset
+import torchvision.transforms as transforms
+from PIL import Image
 from tqdm import tqdm
 
 
@@ -40,8 +42,46 @@ def generate_pairings_csv(output_path:str, img_src:str, spectrograms_data:tuple,
 
 class EmotePairingDataset(Dataset):
 
-    def __init__(self, parings_pth, set:str='train', transform=None, target_transform=None):
-        pass
+    """
+    Creates a Pytorch data set that a Pytorch dataloader can load in a traning loop
+    
+    Args:
+        emos_paths (list):  List of paths for emos images
+        spgs_paths (list):  List of paths for corresponding paired spectrogram images   
+    """
+
+    # def __init__(self, paring_pth, set: str='train', transform=None) -> None:
+    def __init__(self, emos_paths, spgs_paths, transform=None, target_transform=None) -> None:
+
+        super().__init__()
+
+        self.emos_paths = emos_paths
+        self.sptg_paths = spgs_paths
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __getitem__(self, index):
+
+        xs = []
+        ys = []
+
+        for emo_path, sptg_path in zip(self.emos_paths, self.sptg_paths):
+            
+            x = Image.open(emo_path)
+            y = Image.open(sptg_path)
+            
+            if self.transform:
+                x = self.transform(x)
+            if self.target_transform:
+                y = self.target_transform(y)
+            
+            xs.append(x)
+            ys.append(y)
+
+        return xs, ys
+
+    def __len__(self):
+        return len(self.emos_paths)
 
 if __name__=='__main__':
 
