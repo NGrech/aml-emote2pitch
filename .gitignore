@@ -132,4 +132,5 @@ TESTNB.ipynb
 
 data/FER/*
 data/GTZAN/*
+data/Spectrograms/*
 .vscode/settings.json
