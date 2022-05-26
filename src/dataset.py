@@ -42,46 +42,68 @@ def generate_pairings_csv(output_path:str, img_src:str, spectrograms_data:tuple,
 
 class EmotePairingDataset(Dataset):
 
-    """
-    Creates a Pytorch data set that a Pytorch dataloader can load in a traning loop
-    
-    Args:
-        emos_paths (list):  List of paths for emos images
-        spgs_paths (list):  List of paths for corresponding paired spectrogram images   
-    """
+    def __init__(self, pairing_pth, csv_file_name, set: str='train', transform=None, target_transform=None, **kwargs) -> None:
 
-    # def __init__(self, paring_pth, set: str='train', transform=None) -> None:
-    def __init__(self, emos_paths, spgs_paths, transform=None, target_transform=None) -> None:
+        """
+        Creates a Pytorch dataset that a Pytorch dataloader can load in a train loop
+        
+        Args:
+            pairing_pth:        Path to a root folder containing "data"-folder and a path-compatible csv-file.
+            csv_file_name:      File-name of the csv-file containing pairing paths, and train/test-switch
+            set (str):          Switch for creating a train or test dataset.
+            transform:          Transformations for emotion face images (GAN conditional)
+            target_transform:   Transformations for spectrograms
+        """
 
         super().__init__()
 
-        self.emos_paths = emos_paths
-        self.sptg_paths = spgs_paths
+        self.set = set
+
         self.transform = transform
         self.target_transform = target_transform
 
-    def __getitem__(self, index):
+        self.pairing_pth = pairing_pth
+        self.csv_path = os.path.join(pairing_pth, csv_file_name)
 
-        xs = []
-        ys = []
+        self.csv_data_train = []
+        self.csv_data_test = []
 
-        for emo_path, sptg_path in zip(self.emos_paths, self.sptg_paths):
+        with open(self.csv_path, 'r', newline='') as fr:
             
-            x = Image.open(emo_path)
-            y = Image.open(sptg_path)
-            
-            if self.transform:
-                x = self.transform(x)
-            if self.target_transform:
-                y = self.target_transform(y)
-            
-            xs.append(x)
-            ys.append(y)
+            csv_in = csv.reader(fr)
 
-        return xs, ys
+            cnt = 0
+            for emo_p, sptg_p, train_test in csv_in:
+                if train_test == 'train' and self.set == 'train':
+                    self.csv_data_train.append([emo_p, sptg_p])
+                    cnt += 1
+                elif train_test == 'test' and self.set == 'test':
+                    self.csv_data_test.append([emo_p, sptg_p])
+                    cnt += 1
+
+        self.csv_data_len = cnt
+
+    def __getitem__(self, idx):
+
+        if self.set == 'train':
+            emo_p = self.csv_data_train[idx][0]
+            sptg_p = self.csv_data_train[idx][1]
+        elif self.set == 'test':
+            emo_p = self.csv_data_test[idx][0]
+            sptg_p = self.csv_data_test[idx][1]
+
+        x = Image.open(os.path.join(self.pairing_pth, emo_p))
+        y = Image.open(os.path.join(self.pairing_pth, sptg_p))
+
+        if self.transform:
+            x = self.transform(x)
+        if self.target_transform:
+            y = self.target_transform(y)
+
+        return x, y
 
     def __len__(self):
-        return len(self.emos_paths)
+        return self.csv_data_len
 
 if __name__=='__main__':
 
