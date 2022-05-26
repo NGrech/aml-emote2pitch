@@ -130,8 +130,17 @@ class Discriminator(nn.Module):
 #   Emote2Pitch and initializing generator and discriminator
 ######################################################################
 
+def _weights_init(m):
+    if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+        torch.nn.init.normal_(m.weight, 0.0, 0.02)
+    if isinstance(m, nn.BatchNorm2d):
+        torch.nn.init.normal_(m.weight, 0.0, 0.02)
+        torch.nn.init.constant_(m.bias, 0)
+
 class Emote2Pitch(nn.Module):
     def __init__(self):
         super(Emote2Pitch, self).__init__()
         self.G =Generator()
         self.D =Discriminator()
+        self.G=self.G.apply(_weights_init)
+        self.D=self.D.apply(_weights_init)
