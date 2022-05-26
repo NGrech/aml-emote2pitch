@@ -42,24 +42,26 @@ def generate_pairings_csv(output_path:str, img_src:str, spectrograms_data:tuple,
 
 class EmotePairingDataset(Dataset):
 
-    """
-    Creates a Pytorch data set that a Pytorch dataloader can load in a traning loop
-    
-    Args:
-        emos_paths (list):  List of paths for emos images
-        spgs_paths (list):  List of paths for corresponding paired spectrogram images   
-    """
+    def __init__(self, pairing_pth, csv_file_name, set: str='train', transform=None, target_transform=None, **kwargs) -> None:
 
-    def __init__(self, paring_pth, set: str='train', transform=None, target_transform=None) -> None:
-    # def __init__(self, emos_paths, spgs_paths, transform=None, target_transform=None) -> None:
+        """
+        Creates a Pytorch data set that a Pytorch dataloader can load in a traning loop
+        
+        Args:
+            pairing_pth:        Path to a root folder conting "data"-folder and a path-compatible csv-file.
+            csv_file_name:      File-name of the csv-file contaning that pairing.
+            set (str):          Switch for cerating a train or test data set.
+            transform:          Transformations for emotion face images (GAN conditional)
+            target_transform:   Transformations for spactrograms
+        """
 
         super().__init__()
 
         self.transform = transform
         self.target_transform = target_transform
 
-        self.paring_pth = paring_pth
-        self.csv_path = os.path.join(paring_pth, 'data', 'parings_2.csv')
+        self.pairing_pth = pairing_pth
+        self.csv_path = os.path.join(pairing_pth, csv_file_name)
 
         with open(self.csv_path, 'r', newline='') as fr:
             csv_data = csv.reader(fr)
@@ -76,8 +78,8 @@ class EmotePairingDataset(Dataset):
 
             for emo_p, sptg_p, train_test in csv_data:
 
-                x = Image.open(os.path.join(self.paring_pth, emo_p))
-                y = Image.open(os.path.join(self.paring_pth, sptg_p))
+                x = Image.open(os.path.join(self.pairing_pth, emo_p))
+                y = Image.open(os.path.join(self.pairing_pth, sptg_p))
 
                 if self.transform:
                     x = self.transform(x)
