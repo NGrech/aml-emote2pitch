@@ -118,7 +118,6 @@ def process_songs(song_paths:list, out_path:str, genre:str, sample_rate:int=2205
                 pth =  os.path.join(constant_q_dir, f'{i:003d}-{j:002d}.png')
                 spect = convert_to_QC_spectrogram(sample, sample_rate, sub_sample_time=False)
                 save_spectrogram(spect, pth)
-                pass
 
 def save_spectrogram(spect, pth:str):
     fig = plt.figure()

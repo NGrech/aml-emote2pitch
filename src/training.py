@@ -1,17 +1,28 @@
 
-from statistics import mode
-from time import sleep
+import os
 
 import mlflow
+import numpy as np
 import torch
-from sklearn.metrics import accuracy_score
-from torch.utils.data import DataLoader
-from tqdm import tqdm
 import torch.nn as nn
 import torch.optim as optim
+from tqdm import tqdm
 
 
-def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params):
+def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test_samples):
+    """Training function for emote2pitch.
+    Args:
+        epochs (int): number of epochs to train for.
+        trainloader (pytorch dataloader) training image pairs 
+        device (str): indicator for device (cpu/gpu) to train on 
+        emote2pitch (Emote2Pitch) model to be trained
+        params (dict): dictionary of parameters:
+            lr (float): learning rate
+            betas (tuple(float)): beta parameters for adam optimizer
+            batch_size (int): batch size used (only passed for logging)
+            L1_lambda (float): L1 lambda used to calculate generator loss
+        test_samples (list(tuple(image, sample_id))): emotion sample image and id 
+    """
     # Pre training setup 
     G_optimizer = optim.Adam(
         emote2pitch.G.parameters(),
@@ -36,6 +47,7 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params):
         mlflow.log_param('epochs', epochs)
         mlflow.log_param('batch size', params['batch_size'])
         mlflow.log_param('learning rate', params['lr'])
+        artifact_pth = mlflow.get_artifact_uri()[8:]
 
         # Running Epochs
         for epoch in range(1, epochs+1):
@@ -85,7 +97,6 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params):
                 
                 G_optimizer.step()
                 
-
                 # MLFlow Logging
                 # eg: mlflow.log_metric("loss", loss)
                 mlflow.log_metric("G loss", G_loss.item())
@@ -102,8 +113,21 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params):
                     fake_gan_loss=fake_gan_loss.item()
                 )
 
+            # -----------------
+            # Sample generation
+            # -----------------
+
+            if epoch % params['sample_every'] == 0:
+
+                t_gen = tqdm(test_samples, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}', total=len(test_samples), unit=' batches')
+                for j, (emote_img, img_id) in enumerate(t_gen):
+                    with torch.no_grad():
+                        img = emote2pitch.G(emote_img)
+                        save_pth = os.path.join(artifact_pth, str(epoch))
+                        if not os.path.isdir(save_pth):
+                            os.makedirs(save_pth)
+                        np.save(os.path.join(save_pth, img_id), img)
+                
+
 if __name__ == "__main__":
-    trainloader = list(range(10))
-    epochs = 2
-
-
+    pass
