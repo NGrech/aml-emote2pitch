@@ -42,14 +42,13 @@ def generate_pairings_csv(output_path:str, img_src:str, spectrograms_data:tuple,
 
 class EmotePairingDataset(Dataset):
 
-    def __init__(self, pairing_pth, csv_file_name, set: str='train', transform=None, target_transform=None, **kwargs) -> None:
+    def __init__(self, pairings_csv_pth, set: str='train', transform=None, target_transform=None, **kwargs) -> None:
 
         """
         Creates a Pytorch dataset that a Pytorch dataloader can load in a train loop
         
         Args:
-            pairing_pth:        Path to a root folder containing "data"-folder and a path-compatible csv-file.
-            csv_file_name:      File-name of the csv-file containing pairing paths, and train/test-switch
+            pairings_csv_pth:   Path to csv-file containing paring paired img paths.
             set (str):          Switch for creating a train or test dataset.
             transform:          Transformations for emotion face images (GAN conditional)
             target_transform:   Transformations for spectrograms
@@ -62,8 +61,7 @@ class EmotePairingDataset(Dataset):
         self.transform = transform
         self.target_transform = target_transform
 
-        self.pairing_pth = pairing_pth
-        self.csv_path = os.path.join(pairing_pth, csv_file_name)
+        self.csv_path = pairings_csv_pth
 
         self.csv_data_train = []
         self.csv_data_test = []
@@ -92,8 +90,8 @@ class EmotePairingDataset(Dataset):
             emo_p = self.csv_data_test[idx][0]
             sptg_p = self.csv_data_test[idx][1]
 
-        x = Image.open(os.path.join(self.pairing_pth, emo_p))
-        y = Image.open(os.path.join(self.pairing_pth, sptg_p))
+        x = Image.open(emo_p)
+        y = Image.open(sptg_p)
 
         if self.transform:
             x = self.transform(x)
@@ -122,7 +120,7 @@ if __name__=='__main__':
         ('sad', 'blues'),
         ('surprise', 'jazz')
     ]
-    train_split = 0.9
+    train_split = 1
 
     output_path = os.path.join('data', 'pairings', f'FER2{spectrogram_type}-{sample_splits}-{sample_rate}.csv')
 

@@ -8,6 +8,9 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 
+import warnings
+warnings.filterwarnings('ignore')
+
 
 def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test_samples):
     """Training function for emote2pitch.
@@ -48,17 +51,18 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
         mlflow.log_param('batch size', params['batch_size'])
         mlflow.log_param('learning rate', params['lr'])
         artifact_pth = mlflow.get_artifact_uri()[8:]
+        steps = len(trainloader)
 
         # Running Epochs
-        for epoch in range(1, epochs+1):
-            t_epoch = tqdm(trainloader, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}', total=len(trainloader), unit=' batches')
+        for epoch in range(0, epochs):
+            t_epoch = tqdm(trainloader, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}', total=steps, unit='batch')
             
             # Running an Epoch
             for i, (emote_img, spectrogram_img) in enumerate(t_epoch):
 
                 # Move data to device
-                emote_img.to(device)
-                spectrogram_img.to(device)
+                emote_img = emote_img.to(device)
+                spectrogram_img = spectrogram_img.to(device)
 
                 # label setup
                 b_size = emote_img.shape[0]
@@ -99,13 +103,14 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
                 
                 # MLFlow Logging
                 # eg: mlflow.log_metric("loss", loss)
-                mlflow.log_metric("G loss", G_loss.item())
-                mlflow.log_metric("D loss", D_loss.item())
-                mlflow.log_metric("L1 loss", L1_loss.item())
-                mlflow.log_metric("Fake GAN Loss", fake_gan_loss.item())
+                c_step = i+(epoch*steps)
+                mlflow.log_metric("G loss", G_loss.item(), step=c_step)
+                mlflow.log_metric("D loss", D_loss.item(), step=c_step)
+                mlflow.log_metric("L1 loss", L1_loss.item(), step=c_step)
+                mlflow.log_metric("Fake GAN Loss", fake_gan_loss.item(), step=c_step)
 
                 # TQDM Display
-                t_epoch.set_description(f"Epoch {epoch}")
+                t_epoch.set_description(f"Epoch {epoch+1}")
                 t_epoch.set_postfix(
                     G_loss=G_loss.item(),
                     D_Loss=D_loss.item(),
@@ -119,15 +124,19 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
 
             if epoch % params['sample_every'] == 0:
 
-                t_gen = tqdm(test_samples, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}', total=len(test_samples), unit=' batches')
+                t_gen = tqdm(test_samples, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}', total=len(test_samples), unit=' batch')
                 for j, (emote_img, img_id) in enumerate(t_gen):
+                    t_gen.set_description(f"Test sampling ")
+                    emote_img = emote_img.to(device)
                     with torch.no_grad():
                         img = emote2pitch.G(emote_img)
                         save_pth = os.path.join(artifact_pth, str(epoch))
                         if not os.path.isdir(save_pth):
                             os.makedirs(save_pth)
-                        np.save(os.path.join(save_pth, img_id), img)
+                        np.save(os.path.join(save_pth, img_id), img.cpu().numpy())
                 
+                # Saving Model 
+                torch.save(emote2pitch.state_dict(), os.path.join(artifact_pth, str(epoch), 'mdl.pth'))
 
 if __name__ == "__main__":
     pass
