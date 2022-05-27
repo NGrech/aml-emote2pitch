@@ -478,7 +478,7 @@ testing = ["docopt", "pytest (<6.0.0)"]
 name = "pastel"
 version = "0.2.1"
 description = "Bring colors to your terminal."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
@@ -528,7 +528,7 @@ tenacity = ">=6.2.0"
 name = "poethepoet"
 version = "0.13.1"
 description = "A task runner that works well with poetry."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6.2"
 
@@ -984,7 +984,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "d8a6563de06e044b480af24283c6917d5e7b17fbee8bbcec378724f092889f8b"
+content-hash = "fec37e19ffd3ecefa7898234b87b24ea2fc86011d4a11732310f45403158d7b9"
 
 [metadata.files]
 appdirs = [

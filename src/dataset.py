@@ -89,6 +89,11 @@ class EmotePairingDataset(Dataset):
         elif self.set == 'test':
             emo_p = self.csv_data_test[idx][0]
             sptg_p = self.csv_data_test[idx][1]
+        if '\\' in emo_p:
+          emo_p = os.path.join(*emo_p.split('\\'))  
+        
+        if '\\' in sptg_p:
+          sptg_p = os.path.join(*sptg_p.split('\\'))  
 
         x = Image.open(emo_p)
         y = Image.open(sptg_p)
@@ -107,7 +112,7 @@ if __name__=='__main__':
 
     img_src = os.path.join('data','FER','train')
     spectrogram_type = 'constant-q'
-    sample_rate = '22050Hz'
+    sample_rate = '44100Hz'
     sample_splits = '3-splits'
     spectrogram_data = (
         os.path.join('data','Spectrograms',spectrogram_type),
