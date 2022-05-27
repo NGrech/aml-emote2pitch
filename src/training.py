@@ -1,14 +1,19 @@
 
 import os
+import warnings
 
 import mlflow
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torchvision.transforms as transforms
+from PIL import Image
 from tqdm import tqdm
 
-import warnings
+import dataset
+import emote2pitch
+
 warnings.filterwarnings('ignore')
 
 
@@ -59,6 +64,11 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
             
             # Running an Epoch
             for i, (emote_img, spectrogram_img) in enumerate(t_epoch):
+                # vars to track loss
+                G_losses = []
+                D_losses  = []
+                L1_losses  = []
+                fake_gan_losses = []
 
                 # Move data to device
                 emote_img = emote_img.to(device)
@@ -101,22 +111,27 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
                 
                 G_optimizer.step()
                 
-                # MLFlow Logging
-                # eg: mlflow.log_metric("loss", loss)
-                c_step = i+(epoch*steps)
-                mlflow.log_metric("G loss", G_loss.item(), step=c_step)
-                mlflow.log_metric("D loss", D_loss.item(), step=c_step)
-                mlflow.log_metric("L1 loss", L1_loss.item(), step=c_step)
-                mlflow.log_metric("Fake GAN Loss", fake_gan_loss.item(), step=c_step)
+                # Tracking epoch losses
+                G_losses.append(G_loss.item())
+                D_losses.append(D_loss.item())
+                L1_losses.append(L1_loss.item())
+                fake_gan_losses.append(fake_gan_loss.item())
 
                 # TQDM Display
                 t_epoch.set_description(f"Epoch {epoch+1}")
                 t_epoch.set_postfix(
                     G_loss=G_loss.item(),
-                    D_Loss=D_loss.item(),
+                    D_loss=D_loss.item(),
                     L1_loss=L1_loss.item(),
                     fake_gan_loss=fake_gan_loss.item()
                 )
+
+            # MLFlow Logging (at each epoch)
+            c_step = i+(epoch*steps)
+            mlflow.log_metric("G loss", np.mean(G_losses), step=c_step)
+            mlflow.log_metric("D loss", np.mean(D_losses), step=c_step)
+            mlflow.log_metric("L1 loss", np.mean(L1_losses), step=c_step)
+            mlflow.log_metric("Fake GAN Loss", np.mean(fake_gan_losses), step=c_step)
 
             # -----------------
             # Sample generation
@@ -139,4 +154,58 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
                 torch.save(emote2pitch.state_dict(), os.path.join(artifact_pth, str(epoch), 'mdl.pth'))
 
 if __name__ == "__main__":
-    pass
+    ## Params
+
+    csv_pth = os.path.join('data', 'pairings', 'FER2constant-q-3-splits-22050Hz.csv')
+    image_size = 256
+    num_workers = 0
+    batch_size = 1 
+    n_epochs = 1
+
+    device = torch.device("cuda:0" if (torch.cuda.is_available() > 0) else "cpu")
+    #device ='cpu'
+
+    ## Data set setup
+    transform = transforms.Compose([
+                                transforms.Resize(image_size),
+                                transforms.CenterCrop(image_size),
+                                transforms.Grayscale(num_output_channels=1),
+                                transforms.ToTensor(),
+                                transforms.Normalize((0.5), (0.5)),
+                            ])
+
+    emo2pitch_train_set = dataset.EmotePairingDataset(csv_pth, transform=transform, target_transform=transform)
+
+    dataloader = torch.utils.data.DataLoader(dataset=emo2pitch_train_set,
+                                            batch_size=batch_size,
+                                            shuffle=True)
+
+    e2p = emote2pitch.Emote2Pitch()
+
+    emots = ['happy', 'angry', 'sad', 'surprise']
+    root = os.path.join('data','FER', 'test')
+    test_samples = []
+
+    for e in emots:
+        emote_pth = os.path.join(root, e)
+        sample_files_names = os.listdir(emote_pth)[:2]
+        for sample_image in sample_files_names:
+            smpl = torch.zeros((1,1,image_size, image_size))
+            x = Image.open(os.path.join(emote_pth, sample_image))
+            smpl[0] = transform(x)
+
+            test_samples.append((smpl, f'{e}-{sample_image}'))
+
+    print(len(test_samples))
+
+
+    # Training 
+
+    params = {
+        'lr':2e-4,
+        'betas':(0.5,0.999),
+        'batch_size': 1,
+        'L1_lambda': 100.0,
+        'sample_every':15
+    }
+    train_emote2pitch(n_epochs, dataloader, device, e2p, params, test_samples=test_samples)
