@@ -46,7 +46,7 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
     bce_criterion = nn.BCELoss()
     L1_criterion = nn.L1Loss()
 
-    with mlflow.start_run():
+    with mlflow.start_run(run_name=params['run_name'], experiment_id=params['experiment_id']):
         # Model Setup 
         emote2pitch.to(device)
         emote2pitch.train()
@@ -55,6 +55,7 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
         mlflow.log_param('epochs', epochs)
         mlflow.log_param('batch size', params['batch_size'])
         mlflow.log_param('learning rate', params['lr'])
+        mlflow.set_tags(params['tags'])
         artifact_pth = mlflow.get_artifact_uri()[8:]
         steps = len(trainloader)
 
@@ -127,17 +128,16 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
                 )
 
             # MLFlow Logging (at each epoch)
-            c_step = i+(epoch*steps)
-            mlflow.log_metric("G loss", np.mean(G_losses), step=c_step)
-            mlflow.log_metric("D loss", np.mean(D_losses), step=c_step)
-            mlflow.log_metric("L1 loss", np.mean(L1_losses), step=c_step)
-            mlflow.log_metric("Fake GAN Loss", np.mean(fake_gan_losses), step=c_step)
+            mlflow.log_metric("G loss", np.mean(G_losses), step=epoch)
+            mlflow.log_metric("D loss", np.mean(D_losses), step=epoch)
+            mlflow.log_metric("L1 loss", np.mean(L1_losses), step=epoch)
+            mlflow.log_metric("Fake GAN Loss", np.mean(fake_gan_losses), step=epoch)
 
             # -----------------
             # Sample generation
             # -----------------
 
-            if epoch % params['sample_every'] == 0:
+            if ((epoch+1) % params['sample_every'] == 0) or (epoch == 0) or (epoch == epochs):
 
                 t_gen = tqdm(test_samples, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}', total=len(test_samples), unit=' batch')
                 for j, (emote_img, img_id) in enumerate(t_gen):
@@ -145,25 +145,40 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
                     emote_img = emote_img.to(device)
                     with torch.no_grad():
                         img = emote2pitch.G(emote_img)
-                        save_pth = os.path.join(artifact_pth, str(epoch))
+                        save_pth = os.path.join(artifact_pth, str(epoch+1))
                         if not os.path.isdir(save_pth):
                             os.makedirs(save_pth)
                         np.save(os.path.join(save_pth, img_id), img.cpu().numpy())
                 
                 # Saving Model 
-                torch.save(emote2pitch.state_dict(), os.path.join(artifact_pth, str(epoch), 'mdl.pth'))
+                torch.save(emote2pitch.state_dict(), os.path.join(artifact_pth, str(epoch+1), 'mdl.pth'))
 
 if __name__ == "__main__":
     ## Params
 
-    csv_pth = os.path.join('data', 'pairings', 'FER2constant-q-3-splits-22050Hz.csv')
+    csv_pth = os.path.join('data', 'pairings', 'FER2constant-q-3-splits-44100Hz.csv')
     image_size = 256
     num_workers = 0
     batch_size = 1 
-    n_epochs = 1
+    n_epochs = 300
 
     device = torch.device("cuda:0" if (torch.cuda.is_available() > 0) else "cpu")
-    #device ='cpu'
+    
+    tags = {
+        "HZ": 44100,
+        "splits": 3
+    }
+
+    params = {
+            'lr':2e-4,
+            'betas':(0.5,0.999),
+            'batch_size': 1,
+            'L1_lambda': 100.0,
+            'sample_every':15,
+            'experiment_id':0,
+            'run_name': f'E2P-cGAN-{tags["HZ"]}-{tags["splits"]}split',
+            'tags': tags
+        }
 
     ## Data set setup
     transform = transforms.Compose([
@@ -196,16 +211,6 @@ if __name__ == "__main__":
 
             test_samples.append((smpl, f'{e}-{sample_image}'))
 
-    print(len(test_samples))
-
-
     # Training 
 
-    params = {
-        'lr':2e-4,
-        'betas':(0.5,0.999),
-        'batch_size': 1,
-        'L1_lambda': 100.0,
-        'sample_every':15
-    }
     train_emote2pitch(n_epochs, dataloader, device, e2p, params, test_samples=test_samples)
