@@ -2,6 +2,7 @@
 import os
 from tqdm import tqdm
 from logging import root
+import importlib
 
 import librosa
 import matplotlib
@@ -12,7 +13,6 @@ matplotlib.use('Agg')
 import cqhc
 import librosa
 import matplotlib.pyplot as plt
-
 
 def sample_song(song_pth:str, sample_rate:int=22050, n_samples:int=3) -> list:
     """Loads a song from a given path, and divides the song into
@@ -26,7 +26,7 @@ def sample_song(song_pth:str, sample_rate:int=22050, n_samples:int=3) -> list:
 
     return [song[fames_per_sample*i:fames_per_sample*(i+1)] for i in range(n_samples)]
 
-def convert_to_QC_spectrogram(audio_signal, sampling_frequency, sub_sample_time=True):
+def wav2cqt(y, sr, hl, bpo, do_cqt):
     
     """
     Converts the music category wav-files to constant-Q harmonic coefficients (CQTHCs), using
@@ -38,44 +38,94 @@ def convert_to_QC_spectrogram(audio_signal, sampling_frequency, sub_sample_time=
         sub_sample_time   (bool):       Switch for subsampling in time
     """
 
-    # takes wav sample and returns spectrogram img.
+    importlib.reload(cqhc)
 
-    # Define the parameters and compute the CQT spectrogram
-    step_length = int(pow(2, int(np.ceil(np.log2(0.04 * sampling_frequency)))) / 2)
-    minimum_frequency = 32.70
-    octave_resolution = 31  # 51, 12
-    cqt_spectrogram = cqhc.cqtspectrogram(audio_signal,
-                                          sampling_frequency,
-                                          step_length,
-                                          minimum_frequency,
-                                          octave_resolution)
-
-    w1 = h1 = 256
-
-    if sub_sample_time:
-
-        # Subsampling the time-dimension
-        cqts_2 = cqt_spectrogram.copy()
-        cqts_2 = cqts_2[:, ::5]
-
-        # Post-subsampling truncate in both time and freq dims to 256x256
-        h0 = cqts_2.shape[0]
-        w0 = cqts_2.shape[1]
-        dh = np.int(np.ceil((h0 - h1) / 2))
-        dw = np.int(np.floor((w0 - w1) / 2)) + 1
-        cqts_3 = cqts_2.copy()
-        cqts_3 = cqts_3[dh:h0-dh, 1:w0-dw]
-
+    if do_cqt:
+        cqt = librosa.cqt(
+            y=y,
+            sr=sr,
+            hop_length=hl,
+            bins_per_octave=bpo
+        )
     else:
+        cqt = cqhc.cqtspectrogram(
+            y,
+            sr,
+            hl,
+            bpo
+        )
+    
+    return cqt
 
-        # Truncate in freq dims to 256
-        cqts_2 = cqt_spectrogram.copy()
-        h0 = cqts_2.shape[0]
-        dh = int(np.ceil((h0 - h1) / 2))
-        cqts_3 = cqts_2.copy()
-        cqts_3 = cqts_3[dh:h0-dh, :]
+def cqt2wav(C, sr, hl, bpo):
+    
+    """
+    Converts the constant-Q harmonic coefficients (CQTHCs) to wav-files using the
+    librosa-package: https://librosa.org/doc/main/generated/librosa.icqt.html
+    """
 
-    return cqts_3
+    wav = librosa.icqt(C=C,
+        sr=sr,
+        hop_length=hl,
+        bins_per_octave=bpo
+    )
+
+    return wav
+
+def wav2mel(y, sr, hl, n_mels):
+
+    """
+    Converts wav-files to mel-sepctrogram, using the librosa package:
+    https://librosa.org/doc/0.9.1/generated/librosa.feature.melspectrogram.html
+    """
+
+    mel = librosa.feature.melspectrogram(
+        y=y,
+        sr=sr,
+        hop_length=hl,
+        n_mels=n_mels,
+    )
+
+    return mel
+
+def mel2wav(M, sr, hl):
+
+    """
+    Converts mel-sepctrogram to wav-files, using the librosa package:
+    https://librosa.org/doc/0.9.1/generated/librosa.feature.inverse.mel_to_audio.html
+
+    """
+    waw = librosa.feature.inverse.mel_to_audio(
+        M=M,
+        sr=sr,
+        hop_length=hl
+    )
+
+    return waw
+
+def convert_to_chromagram(sample, sample_rate):
+    return librosa.feature.chroma_stft(y=sample, sr=sample_rate)
+
+def batch_process_songs_to_spectrograms(root_dir:str, output_dir:str, genres:list=None, sample_rate:int=22050, splits=3, mode:str='chromagram'):
+    """Process all songs in root_dir to 3 even length sample spectrograms"""
+
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+
+    if not genres:
+        genres = os.listdir(root_dir)
+
+    for genre in genres:
+        pth = os.path.join(root_dir, genre)
+        song_paths = [os.path.join(pth, s) for s in os.listdir(pth)]
+        process_songs(
+            song_paths,
+            output_dir,
+            genre,
+            sample_rate,
+            splits,
+            mode
+        )
 
 def convert_to_chromagram(sample, sample_rate):
     return librosa.feature.chroma_stft(y=sample, sr=sample_rate)
@@ -104,6 +154,7 @@ def batch_process_songs_to_spectrograms(root_dir:str, output_dir:str, genres:lis
 def process_songs(song_paths:list, out_path:str, genre:str, sample_rate:int=22050, splits=3, mode:str='chromagram'):
     chroma_dir = os.path.join(out_path, 'chromagram', genre, f'{sample_rate}Hz', f'{splits}-splits')
     constant_q_dir = os.path.join(out_path, 'constant-q', genre, f'{sample_rate}Hz', f'{splits}-splits')
+    mel_dir = os.path.join(out_path, 'mel', genre, f'{sample_rate}Hz', f'{splits}-splits')
     for i, song_path in enumerate(tqdm(song_paths, desc=genre, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}')):
         for j, sample in enumerate(sample_song(song_path, n_samples=splits)):
             if mode == 'chromagram' or mode == 'both':
@@ -116,7 +167,13 @@ def process_songs(song_paths:list, out_path:str, genre:str, sample_rate:int=2205
                 if not os.path.isdir(constant_q_dir):
                     os.makedirs(constant_q_dir)
                 pth =  os.path.join(constant_q_dir, f'{i:003d}-{j:002d}.png')
-                spect = convert_to_QC_spectrogram(sample, sample_rate, sub_sample_time=False)
+                spect = wav2cqt(sample, sample_rate, 64, 12, 1)
+                save_spectrogram(spect, pth)
+            if mode == 'mel' or mode == 'both':
+                if not os.path.isdir(mel_dir):
+                    os.makedirs(mel_dir)
+                pth =  os.path.join(mel_dir, f'{i:003d}-{j:002d}.png')
+                spect = wav2mel(sample, sample_rate, 512, 400)
                 save_spectrogram(spect, pth)
 
 def save_spectrogram(spect, pth:str):
