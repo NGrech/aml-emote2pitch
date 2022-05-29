@@ -29,13 +29,10 @@ def sample_song(song_pth:str, sample_rate:int=22050, n_samples:int=3) -> list:
 def wav2cqt(y, sr, hl, bpo, do_cqt):
     
     """
-    Converts the music category wav-files to constant-Q harmonic coefficients (CQTHCs), using
-    the CQHC-Python package: https://github.com/zafarrafii/CQHC-Python
+    Converts wav-files to the constant-Q harmonic coefficients (CQTHCs) using the
+    librosa-package: https://librosa.org/doc/latest/generated/librosa.cqt.html
     
-    Args:
-        audio_signal      (np.array):   Loaded wave file as an np array
-        sampling frequency (int):       HZ at with the audio file was sampled   
-        sub_sample_time   (bool):       Switch for subsampling in time
+    Optional package: https://github.com/zafarrafii/CQHC-Python
     """
 
     importlib.reload(cqhc)
@@ -167,7 +164,7 @@ def process_songs(song_paths:list, out_path:str, genre:str, sample_rate:int=2205
                 if not os.path.isdir(constant_q_dir):
                     os.makedirs(constant_q_dir)
                 pth =  os.path.join(constant_q_dir, f'{i:003d}-{j:002d}.png')
-                spect = wav2cqt(sample, sample_rate, 64, 12, 1)
+                spect = np.real(wav2cqt(sample, sample_rate, 32, 12, 1))
                 save_spectrogram(spect, pth)
             if mode == 'mel' or mode == 'both':
                 if not os.path.isdir(mel_dir):
