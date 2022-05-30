@@ -55,6 +55,7 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
         mlflow.log_param('epochs', epochs)
         mlflow.log_param('batch size', params['batch_size'])
         mlflow.log_param('learning rate', params['lr'])
+        mlflow.log_param('pairings_file', params['csv'])
         mlflow.set_tags(params['tags'])
         artifact_pth = mlflow.get_artifact_uri()[8:]
         steps = len(trainloader)
@@ -137,7 +138,7 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
             # Sample generation
             # -----------------
 
-            if ((epoch+1) % params['sample_every'] == 0) or (epoch == 0) or (epoch == epochs):
+            if ((epoch+1) % params['sample_every'] == 0) or (epoch == 0) or (epoch == epochs-1):
 
                 t_gen = tqdm(test_samples, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}', total=len(test_samples), unit=' batch')
                 for j, (emote_img, img_id) in enumerate(t_gen):
@@ -154,63 +155,74 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
                 torch.save(emote2pitch.state_dict(), os.path.join(artifact_pth, str(epoch+1), 'mdl.pth'))
 
 if __name__ == "__main__":
-    ## Params
-
-    csv_pth = os.path.join('data', 'pairings', 'FER2constant-q-3-splits-44100Hz.csv')
-    image_size = 256
-    num_workers = 0
-    batch_size = 1 
-    n_epochs = 300
-
-    device = torch.device("cuda:0" if (torch.cuda.is_available() > 0) else "cpu")
     
-    tags = {
-        "HZ": 44100,
-        "splits": 3
-    }
 
-    params = {
-            'lr':2e-4,
-            'betas':(0.5,0.999),
-            'batch_size': 1,
-            'L1_lambda': 100.0,
-            'sample_every':15,
-            'experiment_id':0,
-            'run_name': f'E2P-cGAN-{tags["HZ"]}-{tags["splits"]}split',
-            'tags': tags
-        }
+    sample_rates = ['44100Hz', '22050Hz']
+    spect_types = ['constant-q', 'chromagram', 'mel']
 
-    ## Data set setup
-    transform = transforms.Compose([
-                                transforms.Resize(image_size),
-                                transforms.CenterCrop(image_size),
-                                transforms.Grayscale(num_output_channels=1),
-                                transforms.ToTensor(),
-                                transforms.Normalize((0.5), (0.5)),
-                            ])
+    for sr in sample_rates:
+        for st in spect_types:
+            print(f'Training on : {st} @ {sr}\n')
 
-    emo2pitch_train_set = dataset.EmotePairingDataset(csv_pth, transform=transform, target_transform=transform)
+            ## Params
 
-    dataloader = torch.utils.data.DataLoader(dataset=emo2pitch_train_set,
-                                            batch_size=batch_size,
-                                            shuffle=True)
+            csv_pth = os.path.join('data', 'pairings', f'FER2{st}-3-splits-{sr}.csv')
+            image_size = 256
+            num_workers = 0
+            batch_size = 1 
+            n_epochs = 300
 
-    e2p = emote2pitch.Emote2Pitch()
+            device = torch.device("cuda:0" if (torch.cuda.is_available() > 0) else "cpu")
+    
+            tags = {
+                "HZ": sr[:-2],
+                "splits": 3,
+                "spectrogram": st,
+            }
 
-    emots = ['happy', 'angry', 'sad', 'surprise']
-    root = os.path.join('data','FER', 'test')
-    test_samples = []
+            params = {
+                    'lr':2e-4,
+                    'betas':(0.5,0.999),
+                    'batch_size': 1,
+                    'L1_lambda': 100.0,
+                    'sample_every':15,
+                    'experiment_id':0,
+                    'run_name': f'E2P-cGAN-{st}-{tags["HZ"]}HZ-{tags["splits"]}split',
+                    'tags': tags,
+                    'csv': csv_pth 
+                }
 
-    for e in emots:
-        emote_pth = os.path.join(root, e)
-        sample_files_names = os.listdir(emote_pth)[:2]
-        for sample_image in sample_files_names:
-            smpl = torch.zeros((1,1,image_size, image_size))
-            x = Image.open(os.path.join(emote_pth, sample_image))
-            smpl[0] = transform(x)
+            ## Data set setup
+            transform = transforms.Compose([
+                                        transforms.Resize(image_size),
+                                        transforms.CenterCrop(image_size),
+                                        transforms.Grayscale(num_output_channels=1),
+                                        transforms.ToTensor(),
+                                        transforms.Normalize((0.5), (0.5)),
+                                    ])
 
-            test_samples.append((smpl, f'{e}-{sample_image}'))
+            emo2pitch_train_set = dataset.EmotePairingDataset(csv_pth, transform=transform, target_transform=transform)
 
-    # Training 
+            dataloader = torch.utils.data.DataLoader(dataset=emo2pitch_train_set,
+                                                    batch_size=batch_size,
+                                                    shuffle=True)
 
-    train_emote2pitch(n_epochs, dataloader, device, e2p, params, test_samples=test_samples)
+            e2p = emote2pitch.Emote2Pitch()
+
+            emots = ['happy', 'angry', 'sad', 'surprise']
+            root = os.path.join('data','FER', 'test')
+            test_samples = []
+
+            for e in emots:
+                emote_pth = os.path.join(root, e)
+                sample_files_names = os.listdir(emote_pth)[:2]
+                for sample_image in sample_files_names:
+                    smpl = torch.zeros((1,1,image_size, image_size))
+                    x = Image.open(os.path.join(emote_pth, sample_image))
+                    smpl[0] = transform(x)
+
+                    test_samples.append((smpl, f'{e}-{sample_image}'))
+
+            # Training 
+
+            train_emote2pitch(n_epochs, dataloader, device, e2p, params, test_samples=test_samples)

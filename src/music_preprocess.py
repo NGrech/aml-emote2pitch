@@ -186,5 +186,7 @@ if __name__=='__main__':
     root = os.path.join('data','GTZAN','genres_original')
     output = os.path.join('data', 'Spectrograms')
     genres = ['blues', 'jazz', 'pop', 'metal']
-    batch_process_songs_to_spectrograms(root, output, genres,sample_rate=22050, mode='constant-q')
+
+    batch_process_songs_to_spectrograms(root, output, genres,sample_rate=22050, mode='mel')
+    batch_process_songs_to_spectrograms(root, output, genres,sample_rate=44100, mode='mel')
 

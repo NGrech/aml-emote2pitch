@@ -111,14 +111,10 @@ class EmotePairingDataset(Dataset):
 if __name__=='__main__':
 
     img_src = os.path.join('data','FER','train')
-    spectrogram_type = 'constant-q'
-    sample_rate = '44100Hz'
+    spectrogram_types = ['constant-q', 'chromagram', 'mel']
+    sample_rates = ['44100Hz', '22050Hz']
     sample_splits = '3-splits'
-    spectrogram_data = (
-        os.path.join('data','Spectrograms',spectrogram_type),
-        sample_rate,
-        sample_splits
-    )
+    
     pairings = [
         ('happy', 'pop'),
         ('angry', 'metal'),
@@ -127,6 +123,12 @@ if __name__=='__main__':
     ]
     train_split = 1
 
-    output_path = os.path.join('data', 'pairings', f'FER2{spectrogram_type}-{sample_splits}-{sample_rate}.csv')
-
-    generate_pairings_csv(output_path, img_src, spectrogram_data, pairings, train_split)
+    for sr in sample_rates:
+        for st in spectrogram_types:
+            spectrogram_data = (
+                os.path.join('data','Spectrograms',st),
+                sr,
+                sample_splits
+            )
+            output_path = os.path.join('data', 'pairings', f'FER2{st}-{sample_splits}-{sr}.csv')
+            generate_pairings_csv(output_path, img_src, spectrogram_data, pairings, train_split)
