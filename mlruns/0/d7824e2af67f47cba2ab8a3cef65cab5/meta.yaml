@@ -1,0 +1,15 @@
+artifact_uri: file:///D:/aml-project/aml-emote2pitch/mlruns/0/d7824e2af67f47cba2ab8a3cef65cab5/artifacts
+end_time: 1653987401973
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: d7824e2af67f47cba2ab8a3cef65cab5
+run_uuid: d7824e2af67f47cba2ab8a3cef65cab5
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1653772623416
+status: 3
+tags: []
+user_id: ngrec
