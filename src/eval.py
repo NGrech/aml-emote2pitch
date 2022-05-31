@@ -161,11 +161,11 @@ class NDB:
                     'Different-Bins': different_bins}
 
         if model_label:
-            print('Results for {} samples from {}: '.format(n, model_label), end='')
+            #print('Results for {} samples from {}: '.format(n, model_label), end='')
             self.cached_results[model_label] = results
             if self.results_file:
                 pkl.dump(self.cached_results, open(self.results_file, 'wb'))
-        print('NDB =', ndb, 'NDB/K =', ndb/self.number_of_bins, ', JS =', js)
+        #print('NDB =', ndb, 'NDB/K =', ndb/self.number_of_bins, ', JS =', js)
         return results
 
     def print_results(self):

@@ -111,8 +111,10 @@ class EmotePairingDataset(Dataset):
 if __name__=='__main__':
 
     img_src = os.path.join('data','FER','train')
-    spectrogram_types = ['constant-q', 'chromagram', 'mel']
-    sample_rates = ['44100Hz', '22050Hz']
+    #spectrogram_types = ['constant-q', 'chromagram', 'mel']
+    spectrogram_types = ['constant-qv2']
+    #sample_rates = ['44100Hz', '22050Hz']
+    sample_rates = ['22050Hz']
     sample_splits = '3-splits'
     
     pairings = [

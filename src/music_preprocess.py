@@ -150,7 +150,7 @@ def batch_process_songs_to_spectrograms(root_dir:str, output_dir:str, genres:lis
 
 def process_songs(song_paths:list, out_path:str, genre:str, sample_rate:int=22050, splits=3, mode:str='chromagram'):
     chroma_dir = os.path.join(out_path, 'chromagram', genre, f'{sample_rate}Hz', f'{splits}-splits')
-    constant_q_dir = os.path.join(out_path, 'constant-q', genre, f'{sample_rate}Hz', f'{splits}-splits')
+    constant_q_dir = os.path.join(out_path, 'constant-qv2', genre, f'{sample_rate}Hz', f'{splits}-splits')
     mel_dir = os.path.join(out_path, 'mel', genre, f'{sample_rate}Hz', f'{splits}-splits')
     for i, song_path in enumerate(tqdm(song_paths, desc=genre, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}')):
         for j, sample in enumerate(sample_song(song_path, n_samples=splits)):
@@ -187,6 +187,6 @@ if __name__=='__main__':
     output = os.path.join('data', 'Spectrograms')
     genres = ['blues', 'jazz', 'pop', 'metal']
 
-    batch_process_songs_to_spectrograms(root, output, genres,sample_rate=22050, mode='mel')
-    batch_process_songs_to_spectrograms(root, output, genres,sample_rate=44100, mode='mel')
+    batch_process_songs_to_spectrograms(root, output, genres,sample_rate=22050, mode='constant-q')
+    batch_process_songs_to_spectrograms(root, output, genres,sample_rate=44100, mode='constant-q')
 

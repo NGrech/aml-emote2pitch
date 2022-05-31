@@ -157,8 +157,11 @@ def train_emote2pitch(epochs:int, trainloader, device, emote2pitch, params, test
 if __name__ == "__main__":
     
 
-    sample_rates = ['44100Hz', '22050Hz']
-    spect_types = ['constant-q', 'chromagram', 'mel']
+    #sample_rates = ['44100Hz', '22050Hz']
+    #spect_types = ['constant-q', 'chromagram', 'mel']
+
+    sample_rates = ['22050Hz']
+    spect_types = ['constant-qv2']
 
     for sr in sample_rates:
         for st in spect_types:
