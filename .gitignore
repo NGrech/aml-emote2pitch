@@ -134,4 +134,5 @@ data/FER/*
 data/GTZAN/*
 data/Spectrograms/*
 .vscode/settings.json
-mlruns/
+mlruns/.trash
+mlruns/0/*/artifacts/*/*.pth
